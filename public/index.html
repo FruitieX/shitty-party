@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<body>
+	Current queue:
+	<div id="queue" style="padding-bottom: 30px;">
+	</div>
+	<div>
+		<input id="videoId"/>
+		<button onclick="submit();">Submit YouTube URL</button>
+	</div>
+
+	<script>
+let ws = null;
+const send = msg => {
+  ws && ws.send(JSON.stringify(msg), err => err && console.log('send error', err));
+  console.log('sending', msg);
+}
+
+const submit = () => {
+	const videoId = document.getElementById('videoId').value;
+	send({ cmd: 'queueVideo', payload: videoId });
+};
+
+const updateQueue = queue => {
+	const root = document.getElementById('queue');
+	root.innerHTML = '';
+
+	queue.forEach(songId => {
+		const url = `https://www.youtube.com/watch?v=${songId}`;
+
+		const songRow = document.createElement("div");
+		const songLink = document.createElement("a");
+
+		songLink.href = url;
+		songLink.textContent = url;
+
+		songRow.appendChild(songLink);
+
+		root.appendChild(songRow);
+	});
+};
+
+const connect = () => {
+  console.log('connecting...');
+  ws = new WebSocket('ws://player.fruitiex.org');
+
+  ws.onmessage = event => {
+    let data = {};
+
+    // yolo
+    try {
+      data = JSON.parse(event.data);
+    } catch (e) {
+      console.log('parse error:', e);
+    }
+
+    if (data.cmd === 'curQueue') {
+			updateQueue(data.payload);
+    } else if (data.cmd === 'refresh') {
+      location.reload();
+		}
+  };
+  ws.onopen = () => {
+		console.log('connected');
+	  ws.onclose = () => setTimeout(connect, 1000);
+	}
+  ws.onerror = () => setTimeout(connect, 1000);
+};
+
+connect();
+</script>
+</body>
+</html>
